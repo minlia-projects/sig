@@ -76,76 +76,9 @@ const knownMasterKey = fromSeed(knownSeed);
 
 const cosmosAddress = 'cosmos1xkqfeym2enqah7mwww0wyksx8u5qplsnsy8nl7';
 
-const cosmosPrivateKey = new Uint8Array([
-    13,
-    110,
-    241,
-    146,
-    147,
-    67,
-    140,
-    75,
-    50,
-    230,
-    95,
-    50,
-    143,
-    22,
-    234,
-    206,
-    129,
-    111,
-    10,
-    48,
-    75,
-    132,
-    185,
-    212,
-    21,
-    128,
-    43,
-    44,
-    208,
-    85,
-    198,
-    109
-]);
+const cosmosPrivateKey = "0d6ef19293438c4b32e65f328f16eace816f0a304b84b9d415802b2cd055c66d"
 
-const cosmosPublicKey = new Uint8Array([
-    3,
-    60,
-    164,
-    119,
-    53,
-    116,
-    177,
-    167,
-    2,
-    1,
-    131,
-    86,
-    33,
-    29,
-    56,
-    87,
-    99,
-    24,
-    244,
-    100,
-    113,
-    178,
-    114,
-    89,
-    143,
-    95,
-    177,
-    157,
-    201,
-    73,
-    191,
-    110,
-    121
-]);
+const cosmosPublicKey = "033ca4773574b1a702018356211d38576318f46471b272598f5fb19dc949bf6e79"
 
 const cosmosKeyPair = {
     publicKey:  cosmosPublicKey,
@@ -158,76 +91,9 @@ const customPath = "m/0'/0/0/0";
 
 const customAddress = 'custom1v2h8z97nqaumf9t8c6fhyal2j6f9s6mugvepc5';
 
-const customPrivateKey = new Uint8Array([
-    54,
-    89,
-    88,
-    225,
-    226,
-    154,
-    80,
-    20,
-    212,
-    54,
-    118,
-    144,
-    130,
-    94,
-    70,
-    246,
-    252,
-    199,
-    82,
-    236,
-    214,
-    238,
-    126,
-    196,
-    85,
-    224,
-    18,
-    25,
-    144,
-    98,
-    202,
-    220
-]);
+const customPrivateKey = "365958e1e29a5014d4367690825e46f6fcc752ecd6ee7ec455e012199062cadc";
 
-const customPublicKey = new Uint8Array([
-    3,
-    147,
-    159,
-    182,
-    106,
-    235,
-    134,
-    53,
-    180,
-    193,
-    187,
-    140,
-    166,
-    15,
-    246,
-    28,
-    238,
-    201,
-    108,
-    77,
-    92,
-    123,
-    85,
-    2,
-    209,
-    107,
-    254,
-    149,
-    22,
-    211,
-    68,
-    37,
-    74
-]);
+const customPublicKey = "03939fb66aeb8635b4c1bb8ca60ff61ceec96c4d5c7b5502d16bfe9516d344254a";
 
 const tx = {
     'msg':  [
@@ -725,15 +591,15 @@ describe('core', () => {
         it('with default prefix, and path', () => {
             const wallet = Sig.createWalletFromMnemonic(knownMnemonic);
             expect(wallet.address).toBe(cosmosAddress);
-            expect(wallet.privateKey).toBeBytes(cosmosPrivateKey);
-            expect(wallet.publicKey).toBeBytes(cosmosPublicKey);
+            expect(wallet.privateKey).toBe(cosmosPrivateKey);
+            expect(wallet.publicKey).toBe(cosmosPublicKey);
         });
 
         it('with custom prefix and custom path', () => {
             const wallet = Sig.createWalletFromMnemonic(knownMnemonic, customPrefix, customPath);
             expect(wallet.address).toBe(customAddress);
-            expect(wallet.privateKey).toBeBytes(customPrivateKey);
-            expect(wallet.publicKey).toBeBytes(customPublicKey);
+            expect(wallet.privateKey).toBe(customPrivateKey);
+            expect(wallet.publicKey).toBe(customPublicKey);
         });
     });
 
@@ -750,29 +616,29 @@ describe('core', () => {
         it('with default prefix and path', () => {
             const wallet = Sig.createWalletFromMasterKey(knownMasterKey);
             expect(wallet.address).toBe(cosmosAddress);
-            expect(wallet.privateKey).toBeBytes(cosmosPrivateKey);
-            expect(wallet.publicKey).toBeBytes(cosmosPublicKey);
+            expect(wallet.privateKey).toBe(cosmosPrivateKey);
+            expect(wallet.publicKey).toBe(cosmosPublicKey);
         });
 
         it('with custom prefix and path', () => {
             const wallet = Sig.createWalletFromMasterKey(knownMasterKey, customPrefix, customPath);
             expect(wallet.address).toBe(customAddress);
-            expect(wallet.privateKey).toBeBytes(customPrivateKey);
-            expect(wallet.publicKey).toBeBytes(customPublicKey);
+            expect(wallet.privateKey).toBe(customPrivateKey);
+            expect(wallet.publicKey).toBe(customPublicKey);
         });
     });
 
     describe('createKeyPairFromMasterKey', () => {
         it('with default path', () => {
             const keyPair = Sig.createKeyPairFromMasterKey(knownMasterKey);
-            expect(keyPair.privateKey).toBeBytes(cosmosPrivateKey);
-            expect(keyPair.publicKey).toBeBytes(cosmosPublicKey);
+            expect(keyPair.privateKey).toBe(cosmosPrivateKey);
+            expect(keyPair.publicKey).toBe(cosmosPublicKey);
         });
 
         it('with custom path', () => {
             const keyPair = Sig.createKeyPairFromMasterKey(knownMasterKey, customPath);
-            expect(keyPair.privateKey).toBeBytes(customPrivateKey);
-            expect(keyPair.publicKey).toBeBytes(customPublicKey);
+            expect(keyPair.privateKey).toBe(customPrivateKey);
+            expect(keyPair.publicKey).toBe(customPublicKey);
         });
     });
 

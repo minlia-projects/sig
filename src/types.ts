@@ -1,20 +1,18 @@
-import { Base64String, Bech32String, Bytes } from '@tendermint/types';
+import { Base64String, Bech32String, HexString } from '@tendermint/types';
 
 /**
  * A private and public key pair.
  */
 export interface KeyPair {
-    privateKey: Bytes;
-    publicKey: Bytes;
+    privateKey: HexString;
+    publicKey: HexString;
 }
 
 /**
  * Wallet
  */
-export interface Wallet  {
+export interface Wallet extends KeyPair {
     address: Bech32String;
-    privateKey: string;
-    publicKey: string;
 }
 
 /**

@@ -1,13 +1,14 @@
 import {
     base64ToBytes,
     bufferToBytes,
-    bytesToBase64,
+    bytesToBase64, 
     toCanonicalJSONBytes
 } from '@tendermint/belt';
 
 import {
     Bech32String,
-    Bytes
+    Bytes,
+    HexString
 } from '@tendermint/types';
 
 import {
@@ -79,7 +80,6 @@ export function createWalletFromMnemonic(mnemonic: string, prefix: string = COSM
  */
 export function createMasterKeyFromMnemonic(mnemonic: string, password?: string): BIP32Interface {
     const seed = bip39MnemonicToSeed(mnemonic, password);
-
     return bip32FromSeed(seed);
 }
 
@@ -96,8 +96,8 @@ export function createWalletFromMasterKey(masterKey: BIP32Interface, prefix: str
     const { privateKey, publicKey } = createKeyPairFromMasterKey(masterKey, path);
     const address = createAddress(publicKey, prefix);
     return {
-        privateKey: Buffer.from(privateKey).toString('hex'),
-        publicKey: Buffer.from(publicKey).toString('hex'),
+        privateKey,
+        publicKey,
         address
     };
 }
@@ -121,21 +121,21 @@ export function createKeyPairFromMasterKey(masterKey: BIP32Interface, path: stri
     const publicKey = secp256k1PublicKeyCreate(privateKey, true);
 
     return {
-        privateKey,
-        publicKey
+        privateKey: byteToHexString(privateKey),
+        publicKey: byteToHexString(publicKey),
     };
 }
 
 /**
  * Derive a Bech32 address from a public key.
  *
- * @param   publicKey - public key bytes
+ * @param   publicKey - public key HexString
  * @param   prefix    - Bech32 human readable part, defaulting to {@link COSMOS_PREFIX|`COSMOS_PREFIX`}
  *
  * @returns Bech32-encoded address
  */
-export function createAddress(publicKey: Bytes, prefix: string = COSMOS_PREFIX): Bech32String {
-    const hash1 = sha256(publicKey);
+export function createAddress(publicKey: HexString, prefix: string = COSMOS_PREFIX): Bech32String {
+    const hash1 = sha256(hexStringToByte(publicKey));
     const hash2 = ripemd160(hash1);
     const words = bech32ToWords(hash2);
     return bech32Encode(prefix, words);
@@ -159,7 +159,7 @@ export function createKeystore(name: string, password: string, wallet: Wallet): 
 }
 
 
-export function openKeystore(keystore: KeyStore, password: string): Wallet{
+export function openKeystore(keystore: KeyStore, password: string): Wallet {
     const decrypted = decrypt(keystore.wallet, password);
     const walletJson = JSON.parse(decrypted);
     return walletJson;
@@ -223,7 +223,7 @@ export function createSignature(signMsg: StdSignMsg, { privateKey, publicKey }: 
         signature: bytesToBase64(signatureBytes),
         pub_key: {
             type: 'tendermint/PubKeySecp256k1',
-            value: bytesToBase64(publicKey)
+            value: bytesToBase64(hexStringToByte(publicKey))
         }
     };
 }
@@ -236,7 +236,7 @@ export function createSignature(signMsg: StdSignMsg, { privateKey, publicKey }: 
  *
  * @returns signature bytes
  */
-export function createSignatureBytes(signMsg: StdSignMsg, privateKey: Bytes): Bytes {
+export function createSignatureBytes(signMsg: StdSignMsg, privateKey: HexString): Bytes {
     const bytes = toCanonicalJSONBytes(signMsg);
     return sign(bytes, privateKey);
 }
@@ -245,14 +245,14 @@ export function createSignatureBytes(signMsg: StdSignMsg, privateKey: Bytes): By
  * Sign the sha256 hash of `bytes` with a secp256k1 private key.
  *
  * @param   bytes      - bytes to hash and sign
- * @param   privateKey - private key bytes
+ * @param   privateKey - private key hexstring
  *
  * @returns signed hash of the bytes
  * @throws  will throw if the provided private key is invalid
  */
-export function sign(bytes: Bytes, privateKey: Bytes): Bytes {
+export function sign(bytes: Bytes, privateKey: HexString): Bytes {
     const hash = sha256(bytes);
-    const { signature } = secp256k1EcdsaSign(hash, privateKey);
+    const { signature } = secp256k1EcdsaSign(hash, hexStringToByte(privateKey));
     return signature;
 }
 
@@ -300,8 +300,7 @@ export function verifySignatures(signMsg: StdSignMsg, signatures: StdSignature[]
 export function verifySignature(signMsg: StdSignMsg, signature: StdSignature): boolean {
     const signatureBytes = base64ToBytes(signature.signature);
     const publicKey = base64ToBytes(signature.pub_key.value);
-
-    return verifySignatureBytes(signMsg, signatureBytes, publicKey);
+    return verifySignatureBytes(signMsg, signatureBytes, byteToHexString(publicKey));
 }
 
 /**
@@ -309,15 +308,15 @@ export function verifySignature(signMsg: StdSignMsg, signature: StdSignature): b
  *
  * @param   signMsg   - transaction with metadata for signing
  * @param   signature - signature bytes
- * @param   publicKey - public key bytes
+ * @param   publicKey - public key hexstring
  *
  * @returns `true` if the signature is valid and matches, `false` otherwise
  */
-export function verifySignatureBytes(signMsg: StdSignMsg, signature: Bytes, publicKey: Bytes): boolean {
+export function verifySignatureBytes(signMsg: StdSignMsg, signature: Bytes, publicKey: HexString): boolean {
     const bytes = toCanonicalJSONBytes(signMsg);
     const hash = sha256(bytes);
 
-    return secp256k1EcdsaVerify(signature, hash, publicKey);
+    return secp256k1EcdsaVerify(signature, hash, hexStringToByte(publicKey));
 }
 
 /**
@@ -342,19 +341,19 @@ export function createBroadcastTx(tx: StdTx, mode: BroadcastMode = BROADCAST_MOD
  * @param password 
  */
 export function decrypt(transit: string, password: string): string {
-        const salt = CryptoJS.enc.Hex.parse(transit.substr(0, 32));
-        const iv = CryptoJS.enc.Hex.parse(transit.substr(32, 32));
-        const encrypted = transit.substring(64);
-        const key = CryptoJS.PBKDF2(password, salt, {
-            keySize: 256 / 32,
-            iterations: 100
-        });
-        const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
-            iv,
-            padding: CryptoJS.pad.Pkcs7,
-            mode: CryptoJS.mode.CBC
-        });
-        return decrypted.toString(CryptoJS.enc.Utf8); 
+    const salt = CryptoJS.enc.Hex.parse(transit.substr(0, 32));
+    const iv = CryptoJS.enc.Hex.parse(transit.substr(32, 32));
+    const encrypted = transit.substring(64);
+    const key = CryptoJS.PBKDF2(password, salt, {
+        keySize: 256 / 32,
+        iterations: 100
+    });
+    const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
+        iv,
+        padding: CryptoJS.pad.Pkcs7,
+        mode: CryptoJS.mode.CBC
+    });
+    return decrypted.toString(CryptoJS.enc.Utf8);
 }
 
 /**
@@ -382,10 +381,6 @@ export function encrypt(message: string, password: string): string {
     return transit;
 }
 
-
-
-
-
 /**
  * verify the password
  * @param password 
@@ -397,4 +392,31 @@ export function verifyPassword(password: string): void {
     if (password.length < 8) {
         throw new Error("Password length is less than 8 characters");
     }
+}
+
+export function byteToHexString(uint8arr: Bytes): HexString {
+    if (!uint8arr) {
+        return '';
+    }
+    let hexStr = '';
+    for (let i = 0; i < uint8arr.length; i++) {
+        let hex = (uint8arr[i] & 0xff).toString(16);
+        hex = (hex.length === 1) ? '0' + hex : hex;
+        hexStr += hex;
+    }
+
+    return hexStr;
+}
+
+export function hexStringToByte(str: string): Bytes {
+    if (!str) {
+        return new Uint8Array();
+    }
+
+    const a = [];
+    for (let i = 0, len = str.length; i < len; i += 2) {
+        a.push(parseInt(str.substr(i, 2), 16));
+    }
+
+    return new Uint8Array(a);
 }
