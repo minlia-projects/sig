@@ -34,20 +34,20 @@ As always, please be careful to protect any mnemonic phrases, passwords, and pri
 
 ### Documentation
 
-**https://cosmos.github.io/sig/**
+**https://github.com/minlia-projects/sig/**
 
 ### Install
 
-Please note that the NPM package name is `@tendermint/sig` rather than `@cosmos/sig`.
+Please note that the NPM package name is `@minlia/sig` rather than `@cosmos/sig`.
 
 #### Yarn
 ```shell
-yarn add @tendermint/sig
+yarn add @minlia/sig
 ```
 
 #### NPM
 ```shell
-npm install --save @tendermint/sig
+npm install --save @minlia/sig
 ```
 
 ### Usage
@@ -55,35 +55,33 @@ npm install --save @tendermint/sig
 #### Derive a wallet (private key, public key, and address) from a mnemonic
 
 ```typescript
-import { createWalletFromMnemonic } from '@tendermint/sig';
+import { createWalletFromMnemonic, createKeystore } from '@minlia/sig';
 
 const mnemonic = 'trouble salon husband push melody usage fine ensure blade deal miss twin';
-
-const wallet = createWalletFromMnemonic(mnemonic); // BIP39 mnemonic string
+const password = '12345678';
+const wallet = createWalletFromMnemonic(mnemonic, password); // BIP39 mnemonic string
+const keystore = createKeystore('walletName' , password, wallet);
 /*
 {
-    address:    'cosmos1asm039pzjkkg9ghlvj267p5g3whtxd2t4leg5c',
-    privateKey: Uint8Array [
-        202,  60, 140, 106, 178, 180,  60,   1,
-        186,  68, 206, 224, 207, 179,  79,  81,
-        119,  98,  98,   1, 207, 170, 209, 161,
-          1, 124, 151, 236, 205, 151,   3, 229
-    ],
-    publicKey:  Uint8Array [
-          3, 159,  35,  41, 130,  48,   3, 247,
-        139, 242, 113,  41, 200, 176,  73,  27,
-        102, 232, 113, 226,  80, 184, 107, 144,
-        217,  88, 151,  21,  22, 185,  68,  28,
-        211
-    ]
+  privateKey: 'ca3c8c6ab2b43c01ba44cee0cfb34f5177626201cfaad1a1017c97eccd9703e5',
+  publicKey: '039f2329823003f78bf27129c8b0491b66e871e250b86b90d958971516b9441cd3',
+  address: 'cosmos1asm039pzjkkg9ghlvj267p5g3whtxd2t4leg5c'
+}
+{
+  name: 'walletName',
+  address: 'cosmos1asm039pzjkkg9ghlvj267p5g3whtxd2t4leg5c',
+  wallet: '15b64996865bce9362c75310eae13a5b4c6d41c1b7e59201a2bdd827ae903de705y09a5ac96kLnZnaAqBOA2RAIr2s4YT29/ylHzxiImyH3BUrAtGrHmdosccDiWLRwZGJsgzcxjJ9MTsUsGJ0aZB2absivPm36P4Rkjsf8iV6TGZu9wDzKwlmcv0L18Hikcyi4Dmwc3jdVs2FTRY4lY8qblnul+sAKqMSgWeYMucVfZORinBhLbiPePg69XWLsSxessd+/mTWkRTBOnXtxyv4vDHRPEw7jvkX9pu3Hkub6BPPMM+HBF1uRas6nAPvbjIB/O9d+9L783+KHyYx+zPpfmKE51xTo9RQulZWpU='
 }
 */
 ```
 
+
+
+
 #### Derive a Bech32 address from a public key
 
 ```typescript
-import { createAddress } from '@tendermint/sig';
+import { createAddress } from '@minlia/sig';
 
 const address = createAddress(publicKey); // Buffer or Uint8Array
 // 'cosmos1asm039pzjkkg9ghlvj267p5g3whtxd2t4leg5c'
@@ -92,7 +90,7 @@ const address = createAddress(publicKey); // Buffer or Uint8Array
 #### Sign a transaction
 
 ```typescript
-import { signTx } from '@tendermint/sig';
+import { signTx } from '@minlia/sig';
 
 const tx = {
     fee:  {
@@ -152,7 +150,7 @@ const stdTx = signTx(tx, signMeta, wallet); // Wallet or privateKey / publicKey 
 #### Verify a transaction
 
 ```typescript
-import { verifyTx } from '@tendermint/sig';
+import { verifyTx } from '@minlia/sig';
 
 const valid = verifyTx(stdTx, signMeta); // signed transaction and metadata; see example above
 // true
@@ -163,7 +161,7 @@ Please see the [documentation](https://cosmos.github.io/sig/) for the full API.
 ### Building
 
 ```shell
-git clone https://github.com/cosmos/sig.git
+git clone https://github.com/minlia-projects/sig
 cd sig
 yarn install
 yarn setup
