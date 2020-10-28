@@ -28,6 +28,8 @@ import {
     ecdsaVerify as secp256k1EcdsaVerify
 } from 'secp256k1';
 
+import CryptoJS from "crypto-js";
+
 import {
     COSMOS_PREFIX,
     COSMOS_PATH,
@@ -48,7 +50,8 @@ import {
     StdTx,
     Tx,
     SignMeta,
-    Wallet
+    Wallet,
+    KeyStore
 } from './types';
 
 /**
@@ -61,9 +64,8 @@ import {
  * @returns a keypair and address derived from the provided mnemonic
  * @throws  will throw if the provided mnemonic is invalid
  */
-export function createWalletFromMnemonic (mnemonic: string, prefix: string = COSMOS_PREFIX, path: string = COSMOS_PATH): Wallet {
-    const masterKey = createMasterKeyFromMnemonic(mnemonic);
-
+export function createWalletFromMnemonic(mnemonic: string, prefix: string = COSMOS_PREFIX, path: string = COSMOS_PATH, password?: string): Wallet {
+    const masterKey = createMasterKeyFromMnemonic(mnemonic, password);
     return createWalletFromMasterKey(masterKey, prefix, path);
 }
 
@@ -75,8 +77,8 @@ export function createWalletFromMnemonic (mnemonic: string, prefix: string = COS
  * @returns BIP32 master key
  * @throws  will throw if the provided mnemonic is invalid
  */
-export function createMasterKeyFromMnemonic (mnemonic: string): BIP32Interface {
-    const seed = bip39MnemonicToSeed(mnemonic);
+export function createMasterKeyFromMnemonic(mnemonic: string, password?: string): BIP32Interface {
+    const seed = bip39MnemonicToSeed(mnemonic, password);
 
     return bip32FromSeed(seed);
 }
@@ -90,14 +92,12 @@ export function createMasterKeyFromMnemonic (mnemonic: string): BIP32Interface {
  *
  * @returns a keypair and address derived from the provided master key
  */
-export function createWalletFromMasterKey (masterKey: BIP32Interface, prefix: string = COSMOS_PREFIX, path: string = COSMOS_PATH): Wallet {
+export function createWalletFromMasterKey(masterKey: BIP32Interface, prefix: string = COSMOS_PREFIX, path: string = COSMOS_PATH): Wallet {
     const { privateKey, publicKey } = createKeyPairFromMasterKey(masterKey, path);
-
     const address = createAddress(publicKey, prefix);
-
     return {
-        privateKey,
-        publicKey,
+        privateKey: Buffer.from(privateKey).toString('hex'),
+        publicKey: Buffer.from(publicKey).toString('hex'),
         address
     };
 }
@@ -111,14 +111,14 @@ export function createWalletFromMasterKey (masterKey: BIP32Interface, prefix: st
  * @returns derived public and private key pair
  * @throws  will throw if a private key cannot be derived
  */
-export function createKeyPairFromMasterKey (masterKey: BIP32Interface, path: string = COSMOS_PATH): KeyPair {
+export function createKeyPairFromMasterKey(masterKey: BIP32Interface, path: string = COSMOS_PATH): KeyPair {
     const buffer = masterKey.derivePath(path).privateKey;
     if (!buffer) {
         throw new Error('could not derive private key');
     }
 
     const privateKey = bufferToBytes(buffer);
-    const publicKey  = secp256k1PublicKeyCreate(privateKey, true);
+    const publicKey = secp256k1PublicKeyCreate(privateKey, true);
 
     return {
         privateKey,
@@ -134,12 +134,35 @@ export function createKeyPairFromMasterKey (masterKey: BIP32Interface, path: str
  *
  * @returns Bech32-encoded address
  */
-export function createAddress (publicKey: Bytes, prefix: string = COSMOS_PREFIX): Bech32String {
+export function createAddress(publicKey: Bytes, prefix: string = COSMOS_PREFIX): Bech32String {
     const hash1 = sha256(publicKey);
     const hash2 = ripemd160(hash1);
     const words = bech32ToWords(hash2);
-
     return bech32Encode(prefix, words);
+}
+
+
+/**
+ * create keystore
+ * @param name 
+ * @param password 
+ * @param wallet 
+ */
+export function createKeystore(name: string, password: string, wallet: Wallet): KeyStore {
+    const ciphertext = encrypt(JSON.stringify(wallet), password);
+    const keystore = {
+        name,
+        address: wallet.address,
+        wallet: ciphertext
+    };
+    return keystore;
+}
+
+
+export function openKeystore(keystore: KeyStore, password: string): Wallet{
+    const decrypted = decrypt(keystore.wallet, password);
+    const walletJson = JSON.parse(decrypted);
+    return walletJson;
 }
 
 /**
@@ -155,9 +178,9 @@ export function createAddress (publicKey: Bytes, prefix: string = COSMOS_PREFIX)
  *
  * @returns a signed transaction
  */
-export function signTx (tx: Tx | StdTx, meta: SignMeta, keyPair: KeyPair): StdTx {
-    const signMsg    = createSignMsg(tx, meta);
-    const signature  = createSignature(signMsg, keyPair);
+export function signTx(tx: Tx | StdTx, meta: SignMeta, keyPair: KeyPair): StdTx {
+    const signMsg = createSignMsg(tx, meta);
+    const signature = createSignature(signMsg, keyPair);
     const signatures = (('signatures' in tx) && (tx.signatures != null)) ? [...tx.signatures, signature] : [signature];
 
     return {
@@ -174,14 +197,14 @@ export function signTx (tx: Tx | StdTx, meta: SignMeta, keyPair: KeyPair): StdTx
  *
  * @returns a transaction with metadata for signing
  */
-export function createSignMsg (tx: Tx, meta: SignMeta): StdSignMsg {
+export function createSignMsg(tx: Tx, meta: SignMeta): StdSignMsg {
     return {
         account_number: meta.account_number,
-        chain_id:       meta.chain_id,
-        fee:            tx.fee,
-        memo:           tx.memo,
-        msgs:           tx.msg,
-        sequence:       meta.sequence
+        chain_id: meta.chain_id,
+        fee: tx.fee,
+        memo: tx.memo,
+        msgs: tx.msg,
+        sequence: meta.sequence
     };
 }
 
@@ -193,13 +216,13 @@ export function createSignMsg (tx: Tx, meta: SignMeta): StdSignMsg {
  *
  * @returns a signature and corresponding public key
  */
-export function createSignature (signMsg: StdSignMsg, { privateKey, publicKey }: KeyPair): StdSignature {
+export function createSignature(signMsg: StdSignMsg, { privateKey, publicKey }: KeyPair): StdSignature {
     const signatureBytes = createSignatureBytes(signMsg, privateKey);
 
     return {
         signature: bytesToBase64(signatureBytes),
-        pub_key:   {
-            type:  'tendermint/PubKeySecp256k1',
+        pub_key: {
+            type: 'tendermint/PubKeySecp256k1',
             value: bytesToBase64(publicKey)
         }
     };
@@ -213,9 +236,8 @@ export function createSignature (signMsg: StdSignMsg, { privateKey, publicKey }:
  *
  * @returns signature bytes
  */
-export function createSignatureBytes (signMsg: StdSignMsg, privateKey: Bytes): Bytes {
+export function createSignatureBytes(signMsg: StdSignMsg, privateKey: Bytes): Bytes {
     const bytes = toCanonicalJSONBytes(signMsg);
-
     return sign(bytes, privateKey);
 }
 
@@ -228,11 +250,9 @@ export function createSignatureBytes (signMsg: StdSignMsg, privateKey: Bytes): B
  * @returns signed hash of the bytes
  * @throws  will throw if the provided private key is invalid
  */
-export function sign (bytes: Bytes, privateKey: Bytes): Bytes {
+export function sign(bytes: Bytes, privateKey: Bytes): Bytes {
     const hash = sha256(bytes);
-
     const { signature } = secp256k1EcdsaSign(hash, privateKey);
-
     return signature;
 }
 
@@ -244,7 +264,7 @@ export function sign (bytes: Bytes, privateKey: Bytes): Bytes {
  *
  * @returns `true` if all signatures are valid and match, `false` otherwise or if no signatures were provided
  */
-export function verifyTx (tx: StdTx, meta: SignMeta): boolean {
+export function verifyTx(tx: StdTx, meta: SignMeta): boolean {
     const signMsg = createSignMsg(tx, meta);
 
     return verifySignatures(signMsg, tx.signatures);
@@ -258,7 +278,7 @@ export function verifyTx (tx: StdTx, meta: SignMeta): boolean {
  *
  * @returns `true` if all signatures are valid and match, `false` otherwise or if no signatures were provided
  */
-export function verifySignatures (signMsg: StdSignMsg, signatures: StdSignature[]): boolean {
+export function verifySignatures(signMsg: StdSignMsg, signatures: StdSignature[]): boolean {
     if (signatures.length > 0) {
         return signatures.every(function (signature: StdSignature): boolean {
             return verifySignature(signMsg, signature);
@@ -277,9 +297,9 @@ export function verifySignatures (signMsg: StdSignMsg, signatures: StdSignature[
  *
  * @returns `true` if the signature is valid and matches, `false` otherwise
  */
-export function verifySignature (signMsg: StdSignMsg, signature: StdSignature): boolean {
+export function verifySignature(signMsg: StdSignMsg, signature: StdSignature): boolean {
     const signatureBytes = base64ToBytes(signature.signature);
-    const publicKey      = base64ToBytes(signature.pub_key.value);
+    const publicKey = base64ToBytes(signature.pub_key.value);
 
     return verifySignatureBytes(signMsg, signatureBytes, publicKey);
 }
@@ -293,9 +313,9 @@ export function verifySignature (signMsg: StdSignMsg, signature: StdSignature): 
  *
  * @returns `true` if the signature is valid and matches, `false` otherwise
  */
-export function verifySignatureBytes (signMsg: StdSignMsg, signature: Bytes, publicKey: Bytes): boolean {
+export function verifySignatureBytes(signMsg: StdSignMsg, signature: Bytes, publicKey: Bytes): boolean {
     const bytes = toCanonicalJSONBytes(signMsg);
-    const hash  = sha256(bytes);
+    const hash = sha256(bytes);
 
     return secp256k1EcdsaVerify(signature, hash, publicKey);
 }
@@ -308,9 +328,73 @@ export function verifySignatureBytes (signMsg: StdSignMsg, signature: Bytes, pub
  *
  * @returns a transaction broadcast
  */
-export function createBroadcastTx (tx: StdTx, mode: BroadcastMode = BROADCAST_MODE_SYNC): BroadcastTx {
+export function createBroadcastTx(tx: StdTx, mode: BroadcastMode = BROADCAST_MODE_SYNC): BroadcastTx {
     return {
         tx,
         mode
     };
+}
+
+
+/**
+ * Decrypt message
+ * @param transit 
+ * @param password 
+ */
+export function decrypt(transit: string, password: string): string {
+        const salt = CryptoJS.enc.Hex.parse(transit.substr(0, 32));
+        const iv = CryptoJS.enc.Hex.parse(transit.substr(32, 32));
+        const encrypted = transit.substring(64);
+        const key = CryptoJS.PBKDF2(password, salt, {
+            keySize: 256 / 32,
+            iterations: 100
+        });
+        const decrypted = CryptoJS.AES.decrypt(encrypted, key, {
+            iv,
+            padding: CryptoJS.pad.Pkcs7,
+            mode: CryptoJS.mode.CBC
+        });
+        return decrypted.toString(CryptoJS.enc.Utf8); 
+}
+
+/**
+ * encrypt message
+ *
+ * @param   message   - need encrypt string
+ * @param   password - password
+ * @returns encrypt string
+ */
+export function encrypt(message: string, password: string): string {
+    const salt = CryptoJS.lib.WordArray.random(128 / 8);
+    const key = CryptoJS.PBKDF2(password, salt, {
+        keySize: 256 / 32,
+        iterations: 100
+    });
+    const iv = CryptoJS.lib.WordArray.random(128 / 8);
+    const encrypted = CryptoJS.AES.encrypt(message, key, {
+        iv,
+        padding: CryptoJS.pad.Pkcs7,
+        mode: CryptoJS.mode.CBC
+    });
+    // salt, iv will be hex 32 in length
+    // append them to the ciphertext for use  in decryption
+    const transit = salt.toString() + iv.toString() + encrypted.toString();
+    return transit;
+}
+
+
+
+
+
+/**
+ * verify the password
+ * @param password 
+ */
+export function verifyPassword(password: string): void {
+    if (!password) {
+        throw new Error("Password is required");
+    }
+    if (password.length < 8) {
+        throw new Error("Password length is less than 8 characters");
+    }
 }

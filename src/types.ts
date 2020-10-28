@@ -9,10 +9,12 @@ export interface KeyPair {
 }
 
 /**
- * A {@link KeyPair|`KeyPair`} with a Bech32-encoded address derived from the public key.
+ * Wallet
  */
-export interface Wallet extends KeyPair {
+export interface Wallet  {
     address: Bech32String;
+    privateKey: string;
+    publicKey: string;
 }
 
 /**
@@ -106,3 +108,13 @@ export interface BroadcastTx {
     tx: StdTx;
     mode: BroadcastMode;
 }
+
+/**
+ * 
+ */
+export interface KeyStore {
+    name: string;
+    address: string;
+    wallet: string;
+}
+  
