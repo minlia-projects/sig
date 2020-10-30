@@ -3,13 +3,13 @@ import {
     bufferToBytes,
     bytesToBase64, 
     toCanonicalJSONBytes
-} from '@tendermint/belt';
+} from '@minlia/belt';
 
 import {
     Bech32String,
     Bytes,
     HexString
-} from '@tendermint/types';
+} from '@minlia/types';
 
 import {
     encode as bech32Encode,

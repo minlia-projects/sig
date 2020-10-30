@@ -1,5 +1,5 @@
-import { bufferToBytes } from '@tendermint/belt';
-import { Bytes } from '@tendermint/types';
+import { bufferToBytes } from '@minlia/belt';
+import { Bytes } from '@minlia/types';
 import createHash from 'create-hash';
 
 /**

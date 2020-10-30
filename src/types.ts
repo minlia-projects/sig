@@ -1,4 +1,4 @@
-import { Base64String, Bech32String, HexString } from '@tendermint/types';
+import { Base64String, Bech32String, HexString } from '@minlia/types';
 
 /**
  * A private and public key pair.
