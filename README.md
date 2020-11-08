@@ -147,14 +147,6 @@ const stdTx = signTx(tx, signMeta, wallet); // Wallet or privateKey / publicKey 
 */
 ```
 
-#### Verify a transaction
-
-```typescript
-import { verifyTx } from '@minlia/sig';
-
-const valid = verifyTx(stdTx, signMeta); // signed transaction and metadata; see example above
-// true
-```
 
 Please see the [documentation](https://cosmos.github.io/sig/) for the full API.
 
