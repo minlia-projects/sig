@@ -7,6 +7,7 @@ import {
 import { ec, curve } from "elliptic";
 
 import {
+    Base64String,
     Bech32String,
     Bytes,
     HexString
@@ -370,6 +371,20 @@ export function hexStringToByte(str: string): Bytes {
 
     return new Uint8Array(a);
 }
+
+/**
+ * serializes and Compressed to  33-byte 
+ * @param publicKey 
+ * @return {Base64String}
+ */
+export function serializesAndCompressedPubkey(publicKey: HexString | Bytes): Base64String{
+    if (typeof publicKey == 'string') {
+        return bytesToBase64(_serializePubKey(new ec('secp256k1').keyFromPublic(hexStringToByte(publicKey)).getPublic()));
+    }
+    return bytesToBase64(_serializePubKey(new ec('secp256k1').keyFromPublic(publicKey).getPublic()));
+}
+
+
 
 
 /**
