@@ -1,5 +1,5 @@
 import './setup';
-import { bufferToBytes } from '@tendermint/belt';
+import { bufferToBytes } from '@minlia/belt';
 import { fromSeed } from 'bip32';
 import * as Sig from '../';
 
@@ -690,93 +690,6 @@ describe('core', () => {
         it('with bytes and privateKey', () => {
             const signature = Sig.sign(knownBytes, cosmosPrivateKey);
             expect(signature).toBeBytes(knownSignature);
-        });
-    });
-
-    describe('verifyTx', () => {
-        it('with stdTx and signMeta', () => {
-            const valid = Sig.verifyTx(knownStdTx, signMeta);
-            expect(valid).toBe(true);
-        });
-
-        it.skip('with empty signatures', () => {
-
-        });
-
-        it.skip('with invalid signatures', () => {
-
-        });
-
-        it.skip('with non-matching signatures', () => {
-
-        });
-    });
-
-    describe('verifySignatures', () => {
-        it('with signMsg and signatures', () => {
-            const valid = Sig.verifySignatures(knownSignMsg, [knownStdSignature]);
-            expect(valid).toBe(true);
-        });
-
-        it('with signMsg and empty signatures', () => {
-            const valid = Sig.verifySignatures(knownSignMsg, []);
-            expect(valid).toBe(false);
-        });
-
-        it.skip('with signMsg and invalid signatures', () => {
-
-        });
-
-        it.skip('with signMsg and non-matching signatures', () => {
-
-        });
-    });
-
-    describe('verifySignature', () => {
-        it('with signMsg and signature', () => {
-            const valid = Sig.verifySignature(knownSignMsg, knownStdSignature);
-            expect(valid).toBe(true);
-        });
-
-        it.skip('with signMsg and invalid signature', () => {
-
-        });
-
-        it.skip('with signMsg and non-matching signature', () => {
-
-        });
-    });
-
-    describe('verifySignatureBytes', () => {
-        it('with signMsg, signature, and publicKey', () => {
-            const valid = Sig.verifySignatureBytes(knownSignMsg, knownSignature, cosmosPublicKey);
-            expect(valid).toBe(true);
-        });
-
-        it.skip('with signMsg, invalid signature, and publicKey', () => {
-
-        });
-
-        it.skip('with signMsg, signature, and invalid publicKey', () => {
-
-        });
-    });
-
-    describe('createBroadcastTx', () => {
-        it('with stdTx', () => {
-            const broadcastTx = Sig.createBroadcastTx(knownStdTx);
-            expect(broadcastTx).toEqual({
-                tx:   knownStdTx,
-                mode: 'sync'
-            });
-        });
-
-        it('with stdTx and broadcastMode', () => {
-            const broadcastTx = Sig.createBroadcastTx(knownStdTx, 'async');
-            expect(broadcastTx).toEqual({
-                tx:   knownStdTx,
-                mode: 'async'
-            });
         });
     });
 });

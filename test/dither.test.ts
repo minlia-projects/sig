@@ -48,8 +48,5 @@ describe('dither', () => {
 
         expect(stdTx).toEqual(knownStdTx);
 
-        const valid = Sig.verifyTx(stdTx, signMeta);
-
-        expect(valid).toBe(true);
     });
 });
