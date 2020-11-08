@@ -228,7 +228,7 @@ export function createSignature(signMsg: StdSignMsg, { privateKey, publicKey }: 
     const signatureBytes = createSignatureBytes(signMsg, privateKey);
     return {
         signature: bytesToBase64(signatureBytes),
-        pub_key: bytesToBase64(_serializePubKey(new ec('secp256k1').keyFromPublic(hexStringToByte(publicKey)).getPublic()))
+        pub_key: serializesAndCompressedPubkey(publicKey)
     };
 }
 
