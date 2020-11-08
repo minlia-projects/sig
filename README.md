@@ -91,27 +91,26 @@ const address = createAddress(publicKey); // Buffer or Uint8Array
 
 ```typescript
 import { signTx } from '@minlia/sig';
-
 const tx = {
     fee:  {
-        amount: [{ amount: '0', denom: '' }],
-        gas:    '10000'
+        amount: [],
+        gas:    '200000'
     },
     memo: '',
     msg:  [{
         type:  'cosmos-sdk/MsgSend',
         value: {
-            from_address: 'cosmos1qperwt9wrnkg5k9e5gzfgjppzpqhyav5j24d66',
-            to_address:   'cosmos1yeckxz7tapz34kjwnjxvmxzurerquhtrmxmuxt',
-            amount:       [{ amount: '1', denom: 'STAKE' }]
+            from_address: 'gauss1pxjm78ckn5w8khx30grsvshsd4k6p4qgzaqag6',
+            to_address:   'gauss1d7ftf24geqw2p50z643cl7qn5xd69p937gxqdy',
+            amount:       [{ amount: '1000000', denom: 'ugauss' }]
         }
     }]
 };
 
 const signMeta = {
     account_number: '1',
-    chain_id:       'cosmos',
-    sequence:       '0'
+    chain_id: 'gauss',
+    sequence: '0'
 };
 
 const stdTx = signTx(tx, signMeta, wallet); // Wallet or privateKey / publicKey pair; see example above
