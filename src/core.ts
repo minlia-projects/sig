@@ -1,9 +1,10 @@
 import {
-    base64ToBytes,
     bufferToBytes,
-    bytesToBase64, 
+    bytesToBase64,
     toCanonicalJSONBytes
 } from '@minlia/belt';
+
+import { ec, curve } from "elliptic";
 
 import {
     Bech32String,
@@ -12,6 +13,7 @@ import {
 } from '@minlia/types';
 
 import {
+    // decode as bech32Decode,
     encode as bech32Encode,
     toWords as bech32ToWords
 } from 'bech32';
@@ -26,8 +28,8 @@ import { mnemonicToSeedSync as bip39MnemonicToSeed } from 'bip39';
 import {
     publicKeyCreate as secp256k1PublicKeyCreate,
     ecdsaSign as secp256k1EcdsaSign,
-    ecdsaVerify as secp256k1EcdsaVerify
 } from 'secp256k1';
+
 
 import CryptoJS from "crypto-js";
 
@@ -55,9 +57,10 @@ import {
     KeyStore
 } from './types';
 
+import { encodeBinaryByteArray, UVarInt } from './amino';
+
 /**
  * Create a {@link Wallet|`Wallet`} from a known mnemonic.
- *
  * @param   mnemonic - BIP39 mnemonic seed
  * @param   prefix   - Bech32 human readable part, defaulting to {@link COSMOS_PREFIX|`COSMOS_PREFIX`}
  * @param   path     - BIP32 derivation path, defaulting to {@link COSMOS_PATH|`COSMOS_PATH`}
@@ -98,6 +101,7 @@ export function createWalletFromMasterKey(masterKey: BIP32Interface, prefix: str
     return {
         privateKey,
         publicKey,
+        // publicKey: bech32Encode('gausspub', bech32ToWords(Buffer.from('eb5ae98721' + publicKey, 'hex'))),
         address
     };
 }
@@ -158,7 +162,11 @@ export function createKeystore(name: string, password: string, wallet: Wallet): 
     return keystore;
 }
 
-
+/**
+ * openKeystore
+ * @param keystore 
+ * @param password 
+ */
 export function openKeystore(keystore: KeyStore, password: string): Wallet {
     const decrypted = decrypt(keystore.wallet, password);
     const walletJson = JSON.parse(decrypted);
@@ -182,7 +190,6 @@ export function signTx(tx: Tx | StdTx, meta: SignMeta, keyPair: KeyPair): StdTx 
     const signMsg = createSignMsg(tx, meta);
     const signature = createSignature(signMsg, keyPair);
     const signatures = (('signatures' in tx) && (tx.signatures != null)) ? [...tx.signatures, signature] : [signature];
-
     return {
         ...tx,
         signatures
@@ -218,13 +225,9 @@ export function createSignMsg(tx: Tx, meta: SignMeta): StdSignMsg {
  */
 export function createSignature(signMsg: StdSignMsg, { privateKey, publicKey }: KeyPair): StdSignature {
     const signatureBytes = createSignatureBytes(signMsg, privateKey);
-
     return {
         signature: bytesToBase64(signatureBytes),
-        pub_key: {
-            type: 'tendermint/PubKeySecp256k1',
-            value: bytesToBase64(hexStringToByte(publicKey))
-        }
+        pub_key: bytesToBase64(_serializePubKey(new ec('secp256k1').keyFromPublic(hexStringToByte(publicKey)).getPublic()))
     };
 }
 
@@ -256,68 +259,7 @@ export function sign(bytes: Bytes, privateKey: HexString): Bytes {
     return signature;
 }
 
-/**
- * Verify a signed transaction's signatures.
- *
- * @param   tx   - signed transaction
- * @param   meta - metadata for signing
- *
- * @returns `true` if all signatures are valid and match, `false` otherwise or if no signatures were provided
- */
-export function verifyTx(tx: StdTx, meta: SignMeta): boolean {
-    const signMsg = createSignMsg(tx, meta);
 
-    return verifySignatures(signMsg, tx.signatures);
-}
-
-/**
- * Verify a {@link StdSignMsg|`StdSignMsg`} against multiple {@link StdSignature|`StdSignature`}s.
- *
- * @param   signMsg    - transaction with metadata for signing
- * @param   signatures - signatures
- *
- * @returns `true` if all signatures are valid and match, `false` otherwise or if no signatures were provided
- */
-export function verifySignatures(signMsg: StdSignMsg, signatures: StdSignature[]): boolean {
-    if (signatures.length > 0) {
-        return signatures.every(function (signature: StdSignature): boolean {
-            return verifySignature(signMsg, signature);
-        });
-    }
-    else {
-        return false;
-    }
-}
-
-/**
- * Verify a {@link StdSignMsg|`StdSignMsg`} against a {@link StdSignature|`StdSignature`}.
- *
- * @param   signMsg   - transaction with metadata for signing
- * @param   signature - signature
- *
- * @returns `true` if the signature is valid and matches, `false` otherwise
- */
-export function verifySignature(signMsg: StdSignMsg, signature: StdSignature): boolean {
-    const signatureBytes = base64ToBytes(signature.signature);
-    const publicKey = base64ToBytes(signature.pub_key.value);
-    return verifySignatureBytes(signMsg, signatureBytes, byteToHexString(publicKey));
-}
-
-/**
- * Verify a signature against a {@link StdSignMsg|`StdSignMsg`}.
- *
- * @param   signMsg   - transaction with metadata for signing
- * @param   signature - signature bytes
- * @param   publicKey - public key hexstring
- *
- * @returns `true` if the signature is valid and matches, `false` otherwise
- */
-export function verifySignatureBytes(signMsg: StdSignMsg, signature: Bytes, publicKey: HexString): boolean {
-    const bytes = toCanonicalJSONBytes(signMsg);
-    const hash = sha256(bytes);
-
-    return secp256k1EcdsaVerify(signature, hash, hexStringToByte(publicKey));
-}
 
 /**
  * Prepare a signed transaction for broadcast.
@@ -394,6 +336,10 @@ export function verifyPassword(password: string): void {
     }
 }
 
+/**
+ * byteToHexString
+ * @param uint8arr 
+ */
 export function byteToHexString(uint8arr: Bytes): HexString {
     if (!uint8arr) {
         return '';
@@ -408,6 +354,10 @@ export function byteToHexString(uint8arr: Bytes): HexString {
     return hexStr;
 }
 
+/**
+ * hexStringToByte
+ * @param str 
+ */
 export function hexStringToByte(str: string): Bytes {
     if (!str) {
         return new Uint8Array();
@@ -420,3 +370,30 @@ export function hexStringToByte(str: string): Bytes {
 
     return new Uint8Array(a);
 }
+
+
+/**
+ * serializes a public key in a 33-byte compressed format.
+ * @param {Elliptic.PublicKey} unencodedPubKey
+ * @return {Buffer}
+ */
+function _serializePubKey(unencodedPubKey: curve.base.BasePoint): Buffer {
+    let format = 0x2
+    const y = unencodedPubKey.getY()
+    const x = unencodedPubKey.getX()
+    if (y && y.isOdd()) {
+        format |= 0x1
+    }
+    let pubBz = Buffer.concat([
+        UVarInt.encode(format),
+        x.toArrayLike(Buffer, "be", 32),
+    ])
+
+    // prefixed with length
+    pubBz = encodeBinaryByteArray(pubBz)
+    // add the amino prefix
+    pubBz = Buffer.concat([Buffer.from("EB5AE987", "hex"), pubBz])
+    return pubBz
+}
+
+

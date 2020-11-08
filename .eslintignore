@@ -2,3 +2,5 @@ dist
 docs
 node_modules
 types
+src/amino
+src/utils
