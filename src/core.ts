@@ -24,7 +24,10 @@ import {
     fromSeed as bip32FromSeed
 } from 'bip32';
 
-import { mnemonicToSeedSync as bip39MnemonicToSeed } from 'bip39';
+import { 
+    generateMnemonic,
+    mnemonicToSeedSync as bip39MnemonicToSeed 
+} from 'bip39';
 
 import {
     publicKeyCreate as secp256k1PublicKeyCreate,
@@ -59,6 +62,14 @@ import {
 } from './types';
 
 import { encodeBinaryByteArray, UVarInt } from './amino';
+
+/**
+ * Create a mnmeonic
+ * @param length 
+ */
+export function createMnemonic(length: number = 256) {
+    return generateMnemonic(length);
+}
 
 /**
  * Create a {@link Wallet|`Wallet`} from a known mnemonic.
