@@ -25,7 +25,7 @@ import {
 } from 'bip32';
 
 import { 
-    generateMnemonic,
+    validateMnemonic as bip39ValidateMnemonic,
     mnemonicToSeedSync as bip39MnemonicToSeed 
 } from 'bip39';
 
@@ -63,12 +63,21 @@ import {
 
 import { encodeBinaryByteArray, UVarInt } from './amino';
 
+
+/**
+ * Validate a mnemonic
+ * @param mnemonic 
+ */
+export function validateMnemonic(mnemonic: string): boolean {
+    return bip39ValidateMnemonic(mnemonic)
+}
+
 /**
  * Create a mnmeonic
  * @param length 
  */
-export function createMnemonic(length: number = 256) {
-    return generateMnemonic(length);
+export function generateMnemonic(length: number = 256): string {
+    return bip39GenerateMnemonic(length);
 }
 
 /**
