@@ -71,7 +71,7 @@ export interface PubKey {
  */
 export interface StdSignature {
     signature: Base64String;
-    pub_key: Base64String;
+    pub_key: PubKey;
 }
 
 /**
